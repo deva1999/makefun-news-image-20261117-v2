@@ -21,6 +21,9 @@ import { fileURLToPath } from "node:url";
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const IHDR = Buffer.from("IHDR", "ascii");
+const IEND = Buffer.from([
+  0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+]);
 const MAX_BYTES = 1048576;
 const MAX_SIDE = 1024;
 
@@ -40,6 +43,11 @@ function pngSize(data: Buffer): { width: number; height: number } {
   }
   if (!data.subarray(12, 16).equals(IHDR)) {
     die("entry.png has no IHDR chunk where one belongs");
+  }
+  // The gate wants a whole image: refuse a file whose bytes stop short
+  // of the IEND trailer.
+  if (!data.subarray(data.length - 12).equals(IEND)) {
+    die("entry.png is truncated (no IEND trailer)");
   }
   return { width: data.readUInt32BE(16), height: data.readUInt32BE(20) };
 }
